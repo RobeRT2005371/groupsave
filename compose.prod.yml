@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: groupsave
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a URL-safe DB_PASSWORD in .env.production}
+      POSTGRES_DB: groupsave
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U groupsave -d groupsave"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://groupsave:${DB_PASSWORD}@db:5432/groupsave
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env.production}
+      ENC_KEY: ${ENC_KEY:?Set ENC_KEY in .env.production}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:?Set GATEWAY_SECRET in .env.production}
+      AT_USERNAME: ${AT_USERNAME:-sandbox}
+      AT_API_KEY: ${AT_API_KEY:-}
+      AT_SENDER_ID: ${AT_SENDER_ID:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:?Set CORS_ORIGIN to the public application URL}
+      JITSI_BASE_URL: ${JITSI_BASE_URL:-https://meet.jit.si}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backup:
+    image: postgres:16-alpine
+    user: "0:0"
+    environment:
+      DATABASE_URL: postgres://groupsave:${DB_PASSWORD}@db:5432/groupsave
+    volumes:
+      - backups:/backups
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        umask 077
+        while true; do
+          pg_dump "$$DATABASE_URL" --format=custom --file="/backups/groupsave-$$(date -u +%Y%m%dT%H%M%SZ).dump"
+          find /backups -type f -name 'groupsave-*.dump' -mtime +30 -delete
+          sleep 86400
+        done
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  backups:
