@@ -47,7 +47,7 @@ export default function JoinGroup({ onBack }) {
   const ready = fullName.trim() && phone.trim();
   return (
     <form onSubmit={search}>
-      <div><h2>{t('Join a group')}</h2><p className="muted">{t('Tell us who you are, find your group, and send a request to its officers. No code needed.')}</p></div>
+      <div><h2>{t('Join a group')}</h2><p className="muted">{t('Tell us who you are, find your group, and send a request to its officers.')}</p></div>
 
       <div className="ms-step"><span>1</span>{t('Your details')}</div>
       <label>{t('Full name')}<input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={120} autoComplete="name" required /></label>
