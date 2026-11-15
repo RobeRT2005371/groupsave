@@ -116,7 +116,7 @@ button.link.neg { color:var(--bad); }
 .langsel { background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:99px; padding:6px 12px; font-size:.82rem; }
 .langsel option { color:#14213d; }
 .langsel.dark { background:var(--card); color:var(--ink); border:1px solid var(--line); }
-.authbox { position:relative; } .authlang { position:absolute; top:18px; right:20px; }
+.authbox { position:relative; } .authlang { display:flex; justify-content:flex-end; margin:0 0 14px; }
 
 :root[data-theme="dark"] .tag.open { background:#4a3a0a; color:#f3d98a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.open { background:#4a3a0a; color:#f3d98a; } }
@@ -131,7 +131,7 @@ button.link.neg { color:var(--bad); }
 .themebtn { background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:99px; width:36px; height:32px; padding:0; font-size:1rem; line-height:1; }
 .themebtn:hover { background:rgba(255,255,255,.22); filter:none; }
 .themebtn.dark { background:var(--card); color:var(--ink); border:1px solid var(--line); }
-.authlang { display:flex; gap:8px; }
+.authlang { display:flex; gap:8px; align-items:center; }
 
 /* member portal */
 .tabs { display:flex; gap:6px; margin-bottom:18px; overflow-x:auto; }
