@@ -435,3 +435,67 @@ button, a, summary, [role="button"], input, select { touch-action:manipulation; 
   .dlg-actions > button { flex:1; }
 }
 @keyframes fade { from { opacity:0; } to { opacity:1; } }
+
+/* ---- motion polish (all disabled by the prefers-reduced-motion rule above) ---- */
+/* staggered entrance for stat tiles, cards and note rows */
+.grid > .stat, .content .card, .note { animation:rise .45s var(--ease) both; }
+.grid > .stat:nth-child(1) { animation-delay:.00s; } .grid > .stat:nth-child(2) { animation-delay:.06s; }
+.grid > .stat:nth-child(3) { animation-delay:.12s; } .grid > .stat:nth-child(4) { animation-delay:.18s; }
+.grid > .stat:nth-child(n+5) { animation-delay:.24s; }
+.content .card:nth-of-type(2) { animation-delay:.05s; } .content .card:nth-of-type(3) { animation-delay:.1s; }
+.content .card:nth-of-type(n+4) { animation-delay:.15s; }
+.card:hover { box-shadow:0 8px 26px rgba(11,37,69,.12); }
+.stat .ico { transition:transform .25s var(--ease); }
+.stat:hover .ico { transform:scale(1.12) rotate(-6deg); }
+
+/* progress bars grow from the left */
+.bars .fill { transform-origin:left center; animation:grow .9s var(--ease) both; }
+@keyframes grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+
+/* navigation */
+.pills a, .pills summary { transition:background .2s var(--ease), color .2s, transform .15s; }
+.pills a:hover, .pills summary:hover { transform:translateY(-1px); }
+.pills a.active { animation:pop .3s var(--ease); }
+@keyframes pop { 0% { transform:scale(.92); } 60% { transform:scale(1.04); } 100% { transform:scale(1); } }
+.pop[open] > .menu { animation:drop .18s var(--ease); transform-origin:top right; }
+.pills .pop[open] > .menu { transform-origin:top left; }
+@keyframes drop { from { opacity:0; transform:translateY(-6px) scale(.97); } to { opacity:1; transform:none; } }
+.menu a, .menu button.item { transition:background .15s, padding-left .15s var(--ease); }
+.menu a:hover, .menu button.item:hover { padding-left:16px; }
+
+/* logo, bell and badges */
+.logo { transition:transform .3s var(--ease); }
+.brand:hover .logo { transform:rotate(-8deg) scale(1.06); }
+.badge, .chat-unread { animation:badge 2.4s ease-in-out infinite; }
+@keyframes badge { 0%, 100% { transform:scale(1); } 50% { transform:scale(1.14); } }
+.bell:hover svg { animation:ring .6s ease; transform-origin:50% 0; }
+@keyframes ring { 0%, 100% { transform:rotate(0); } 20% { transform:rotate(14deg); } 40% { transform:rotate(-12deg); } 60% { transform:rotate(8deg); } 80% { transform:rotate(-5deg); } }
+
+/* tables and lists */
+tbody tr { animation:fade .35s ease both; }
+tbody tr:nth-child(1) { animation-delay:.02s; } tbody tr:nth-child(2) { animation-delay:.05s; } tbody tr:nth-child(3) { animation-delay:.08s; }
+tbody tr:nth-child(4) { animation-delay:.11s; } tbody tr:nth-child(5) { animation-delay:.14s; } tbody tr:nth-child(n+6) { animation-delay:.17s; }
+tbody tr:hover { background:color-mix(in srgb, var(--accent) 7%, transparent); }
+.chat-item { transition:background .15s, transform .15s var(--ease); } .chat-item:hover { transform:translateX(3px); }
+.chat-row { animation:msg .28s var(--ease) both; }
+.chat-row.mine { transform-origin:bottom right; } .chat-row.theirs { transform-origin:bottom left; }
+@keyframes msg { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:none; } }
+
+/* feedback messages and tabs */
+.error, .ok, .banner { animation:rise .3s var(--ease) both; }
+.error { animation-name:rise, shake; animation-duration:.3s, .4s; animation-delay:0s, .15s; }
+@keyframes shake { 0%, 100% { translate:0; } 25% { translate:-5px; } 75% { translate:5px; } }
+.tab { transition:background .2s var(--ease), color .2s, border-color .2s, transform .15s; } .tab:hover { transform:translateY(-1px); }
+.tag { transition:transform .15s; } .tag:hover { transform:scale(1.06); }
+.ms-check { animation:check .5s var(--ease) both; }
+@keyframes check { from { transform:scale(.3); opacity:0; } 70% { transform:scale(1.12); } to { transform:scale(1); opacity:1; } }
+
+/* sign-in screen */
+.hero > * { animation:rise .6s var(--ease) both; }
+.hero > *:nth-child(2) { animation-delay:.08s; } .hero > *:nth-child(3) { animation-delay:.16s; }
+.hero > *:nth-child(4) { animation-delay:.24s; } .hero > *:nth-child(n+5) { animation-delay:.32s; }
+.hero .logo.big { animation:float 4s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+.authbox form, .ms { animation:rise .5s var(--ease) .1s both; }
+.hero li { animation:rise .5s var(--ease) both; }
+.hero li:nth-child(1) { animation-delay:.35s; } .hero li:nth-child(2) { animation-delay:.45s; } .hero li:nth-child(3) { animation-delay:.55s; } .hero li:nth-child(n+4) { animation-delay:.65s; }
