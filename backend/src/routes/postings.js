@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { q, tx } from '../db.js';
 import { wrap, httpError, requireRole } from '../middleware.js';
 import { addPosting } from '../ledger.js';
+import { reverseLoanPosting } from './loans.js';
 import { idempotencyKey, runIdempotently } from '../idempotency.js';
 
 const r = Router();
@@ -59,8 +60,9 @@ r.post('/:id/reverse', requireRole(...OFFICERS), wrap(async (req, res) => {
     if (!orig) throw httpError(404, 'Posting not found');
     if (orig.cycle_status !== 'open') throw httpError(400, 'Cycle is closed');
     if (orig.reverses_id) throw httpError(400, 'A reversal cannot be reversed; post a new entry');
-    if (!['contribution', 'fine'].includes(orig.type)) throw httpError(400, 'Only contributions and fines can be reversed here');
+    if (!['contribution', 'fine', 'loan_disbursement', 'loan_repayment'].includes(orig.type)) throw httpError(400, 'Share-out payouts cannot be reversed');
     if ((await c.query('SELECT 1 FROM postings WHERE reverses_id=$1', [orig.id])).rowCount) throw httpError(409, 'Already reversed');
+    if (orig.type.startsWith('loan_')) return reverseLoanPosting(c, { groupId: req.user.groupId, actorId: req.user.id, orig, reason: req.body.reason });
     return addPosting(c, {
       cycleId: orig.cycle_id, memberId: orig.member_id, type: orig.type, amount: -orig.amount, reversesId: orig.id,
       note: req.body.reason || 'Reversal', actorId: req.user.id, groupId: req.user.groupId,

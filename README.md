@@ -48,6 +48,28 @@ Local test:
 curl -X POST "http://localhost:4000/ussd?secret=dev-gateway-secret" -d "phoneNumber=+260971000004" -d "text="
 ```
 
+## Loan reversals
+- Use **Reverse** on the Ledger page for a loan payout or a loan repayment. Nothing is edited or deleted from the ledger: a correcting entry is added and the loan schedule is adjusted.
+- Reversing a repayment takes the money back from the latest paid instalments, and a settled loan becomes active again.
+- A loan payout can only be reversed while nothing has been repaid. Reverse the repayments first. The loan then shows as **reversed** and its schedule is removed.
+- Both are blocked once the cycle is closed, and a repayment cannot be reversed if the pool no longer holds that money.
+
+## Data retention
+A daily job (`backend/src/retention.js`) removes personal data that is no longer needed. The ledger, loans and audit log are never touched.
+
+| Data | Kept for (default) | Setting |
+|---|---|---|
+| SMS log (message text) | 90 days | `RETENTION_NOTIFICATIONS_DAYS` |
+| Expired sign-in codes | 1 day | `RETENTION_OTP_DAYS` |
+| Offline-retry keys | 30 days | `RETENTION_IDEMPOTENCY_DAYS` |
+| Server error log | 90 days | `RETENTION_ERROR_LOG_DAYS` |
+| Join requests and applicant phone numbers | 90 days | `RETENTION_JOIN_REQUEST_DAYS` |
+| Chat and direct messages | 365 days | `RETENTION_MESSAGES_DAYS` |
+| Exited members | anonymized after 365 days | `RETENTION_EXITED_MEMBER_DAYS` |
+
+Anonymizing a member replaces their name with "Former member #id" and wipes their phone number, PIN, passwords, goals and messages. Their ledger entries stay, so the books still add up. It is skipped while the member has an active loan or entries in an open cycle.
+Preview with `cd backend && npm run retention -- --dry-run`, apply by hand with `npm run retention`. Set `RETENTION_ENABLED=false` to turn off the daily run.
+
 ## Design notes
 - Money is integer ngwee everywhere. Share-outs use largest-remainder so payouts sum exactly to the pool.
 - `postings` is append-only (DB trigger blocks UPDATE/DELETE); corrections are reversing entries; each row hashes the previous one. Every posting SMS carries a 4-character chain code.
@@ -58,4 +80,4 @@ curl -X POST "http://localhost:4000/ussd?secret=dev-gateway-secret" -d "phoneNum
 - Optional TOTP two-factor for officers (Security page), 5-attempt lockout (15 min), password rules, bcrypt cost 12, 15-minute idle sign-out, rate limits on the API and USSD, CSV export protected against formula injection, all sign-ins audited.
 
 ## Not yet built
-Bemba/Nyanja menus, reversal of loan postings, data-retention jobs beyond the 90-day notification purge.
+Data-retention rules for the audit log and ledger (these are kept on purpose; see Data retention above), and native-speaker review of the local-language texts (see `translations-review.csv`).

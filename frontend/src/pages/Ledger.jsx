@@ -76,7 +76,7 @@ export default function Ledger({ me, cycle }) {
               <td className="num">{kwacha(p.running_balance)}</td>
               <td>{p.recorded_by_name}</td>
               <td className="muted">{p.hash.slice(0, 4).toUpperCase()}</td>
-              <td>{canPost && !p.reversed && !p.reverses_id && ['contribution', 'fine'].includes(p.type) && <button className="link" onClick={() => reverse(p)}>{t("Reverse")}</button>}</td>
+              <td>{canPost && !p.reversed && !p.reverses_id && ['contribution', 'fine', 'loan_disbursement', 'loan_repayment'].includes(p.type) && <button className="link" onClick={() => reverse(p)}>{t("Reverse")}</button>}</td>
             </tr>
           ))}</tbody>
         </table>

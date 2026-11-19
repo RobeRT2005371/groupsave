@@ -137,7 +137,7 @@ export default function Loans({ me, cycle }) {
               <tr>
                 <td>{l.member_name}</td><td className="num">{kwacha(l.principal)}</td><td className="num">{kwacha(l.outstanding)}</td>
                 <td>{l.status === 'active' && l.next_due ? fmtDate(l.next_due) : '—'} {l.overdue_items > 0 && <span className="tag bad">{t("overdue")}</span>}</td>
-                <td><span className={'tag ' + (l.status === 'settled' ? 'good' : 'open')}>{t(l.status)}</span></td>
+                <td><span className={'tag ' + (l.status === 'settled' ? 'good' : l.status === 'reversed' ? 'bad' : 'open')}>{t(l.status)}</span></td>
                 <td>
                   <button className="link" onClick={() => setOpen(open === l.id ? null : l.id)}>{t("Schedule")}</button>{' '}
                   {canAct && l.status === 'active' && <button className="link" onClick={() => repay(l)}>{t("Record repayment")}</button>}

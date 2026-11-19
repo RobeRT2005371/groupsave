@@ -380,3 +380,22 @@ CREATE TABLE IF NOT EXISTS chat_reports (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (message_id, reporter_id)
 );
+
+-- ===== Loan reversals =====
+-- A loan issued by mistake can be reversed (only while nothing has been repaid); its status becomes 'reversed'.
+ALTER TABLE loans DROP CONSTRAINT IF EXISTS loans_status_check;
+ALTER TABLE loans ADD CONSTRAINT loans_status_check CHECK (status IN ('active','settled','reversed'));
+-- Which loan a ledger entry belongs to, so a repayment can be undone exactly (older rows fall back to the "Loan N" note).
+ALTER TABLE postings ADD COLUMN IF NOT EXISTS loan_id INT REFERENCES loans(id);
+CREATE INDEX IF NOT EXISTS postings_loan ON postings(loan_id) WHERE loan_id IS NOT NULL;
+
+-- ===== Data retention =====
+ALTER TABLE members ADD COLUMN IF NOT EXISTS exited_at TIMESTAMPTZ;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS anonymized_at TIMESTAMPTZ;
+UPDATE members SET exited_at = now() WHERE status = 'exited' AND exited_at IS NULL;
+CREATE TABLE IF NOT EXISTS retention_runs (
+  id BIGSERIAL PRIMARY KEY,
+  ran_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  dry_run BOOLEAN NOT NULL DEFAULT false,
+  result JSONB NOT NULL
+);

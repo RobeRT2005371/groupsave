@@ -31,9 +31,49 @@ export async function issueLoan(c, { groupId, actorId, memberId, principal, inst
   for (const it of items) {
     await c.query('INSERT INTO schedule_items (loan_id,seq,due_date,principal_due,interest_due) VALUES ($1,$2,$3,$4,$5)', [l.id, it.seq, it.dueDate, it.principalDue, it.interestDue]);
   }
-  await addPosting(c, { cycleId: cycle.id, memberId, type: 'loan_disbursement', amount: -principal, note: `Loan ${l.id}`, actorId: actorId, groupId: groupId });
+  await addPosting(c, { cycleId: cycle.id, memberId, type: 'loan_disbursement', amount: -principal, note: `Loan ${l.id}`, loanId: l.id, actorId: actorId, groupId: groupId });
   await audit(c, { groupId: groupId, actor: actorId, action: 'loan.disburse', entity: `loan:${l.id}`, after: { principal, instalments } });
   return l;
+}
+
+/**
+ * Undo a loan disbursement or repayment with a reversing ledger entry. Must run inside a transaction.
+ * - A disbursement can only be reversed while nothing has been repaid; the loan becomes 'reversed' and its schedule is removed.
+ * - A repayment is taken back from the latest paid instalments, and a settled loan becomes active again.
+ */
+export async function reverseLoanPosting(c, { groupId, actorId, orig, reason }) {
+  const loanId = orig.loan_id ?? (Number(/^Loan (\d+)/.exec(orig.note || '')?.[1]) || null);
+  if (!loanId) throw httpError(400, 'Cannot tell which loan this entry belongs to');
+  const loan = (await c.query(
+    'SELECT l.* FROM loans l JOIN cycles cy ON cy.id=l.cycle_id WHERE l.id=$1 AND cy.group_id=$2 FOR UPDATE OF l', [loanId, groupId])).rows[0];
+  if (!loan) throw httpError(404, 'Loan not found');
+  if (loan.status === 'reversed') throw httpError(409, 'This loan was already reversed');
+  const items = (await c.query('SELECT * FROM schedule_items WHERE loan_id=$1 ORDER BY seq', [loan.id])).rows;
+  const paid = items.reduce((a, s) => a + s.paid_amount, 0);
+
+  if (orig.type === 'loan_disbursement') {
+    if (paid > 0) throw httpError(409, 'This loan already has repayments. Reverse the repayments first, then the loan.');
+    await c.query('DELETE FROM schedule_items WHERE loan_id=$1', [loan.id]);
+    await c.query("UPDATE loans SET status='reversed' WHERE id=$1", [loan.id]);
+  } else {
+    const pool = (await c.query('SELECT COALESCE(SUM(amount),0) AS s FROM postings WHERE cycle_id=$1', [orig.cycle_id])).rows[0].s;
+    if (pool - orig.amount < 0) throw httpError(400, 'The pool does not hold enough to take this repayment back');
+    let remaining = orig.amount;
+    if (remaining > paid) throw httpError(409, 'This repayment is larger than what the schedule shows as paid');
+    for (const s of [...items].reverse()) {
+      if (remaining <= 0) break;
+      const take = Math.min(s.paid_amount, remaining);
+      if (take <= 0) continue;
+      await c.query('UPDATE schedule_items SET paid_amount=paid_amount-$2, paid_at=CASE WHEN paid_amount-$2=0 THEN NULL ELSE paid_at END WHERE id=$1', [s.id, take]);
+      remaining -= take;
+    }
+    await c.query("UPDATE loans SET status='active' WHERE id=$1", [loan.id]);
+  }
+  await audit(c, { groupId, actor: actorId, action: orig.type === 'loan_disbursement' ? 'loan.reverse' : 'loan.repayment.reverse', entity: `loan:${loan.id}`, after: { postingId: orig.id, amount: orig.amount, reason: reason || null } });
+  return addPosting(c, {
+    cycleId: orig.cycle_id, memberId: orig.member_id, type: orig.type, amount: -orig.amount, reversesId: orig.id,
+    note: reason || 'Reversal', loanId: loan.id, actorId, groupId,
+  });
 }
 
 const r = Router();
@@ -81,7 +121,7 @@ export async function recordRepayment(c, { groupId, actorId, loanId, amount, not
   for (const ch of changes) await c.query('UPDATE schedule_items SET paid_amount=paid_amount+$2, paid_at=$3 WHERE id=$1', [ch.id, ch.paid, today()]);
   const left = (await c.query('SELECT COUNT(*) AS n FROM schedule_items WHERE loan_id=$1 AND paid_amount < principal_due + interest_due', [loan.id])).rows[0].n;
   if (Number(left) === 0) await c.query("UPDATE loans SET status='settled' WHERE id=$1", [loan.id]);
-  return addPosting(c, { cycleId: loan.cycle_id, memberId: loan.member_id, type: 'loan_repayment', amount, note: note || `Loan ${loan.id}`, actorId, groupId });
+  return addPosting(c, { cycleId: loan.cycle_id, memberId: loan.member_id, type: 'loan_repayment', amount, note: note || `Loan ${loan.id}`, loanId: loan.id, actorId, groupId });
 }
 
 r.post('/:id/repay', requireRole(...OFFICERS), wrap(async (req, res) => {

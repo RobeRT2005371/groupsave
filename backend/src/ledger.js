@@ -22,7 +22,7 @@ export async function audit(client, { groupId, actor, action, entity, before = n
  * Append one posting to a cycle's hash chain. Must be called inside a transaction;
  * the cycle row is locked so the chain cannot fork.
  */
-export async function addPosting(client, { cycleId, memberId, meetingId = null, type, amount, reversesId = null, note = null, actorId, groupId }) {
+export async function addPosting(client, { cycleId, memberId, meetingId = null, type, amount, reversesId = null, note = null, loanId = null, actorId, groupId }) {
   const cyc = await client.query('SELECT status FROM cycles WHERE id=$1 FOR UPDATE', [cycleId]);
   if (!cyc.rows[0]) throw Object.assign(new Error('Cycle not found'), { status: 404 });
   const last = await client.query('SELECT hash FROM postings WHERE cycle_id=$1 ORDER BY id DESC LIMIT 1', [cycleId]);
@@ -37,9 +37,9 @@ export async function addPosting(client, { cycleId, memberId, meetingId = null, 
   const row = { id: Number(id), cycle_id: cycleId, member_id: memberId, type, amount, recorded_by: actorId, reverses_id: reversesId, created_at: createdAt };
   const hash = computeHash(prevHash, row);
   await client.query(
-    `INSERT INTO postings (id,cycle_id,member_id,meeting_id,type,amount,reverses_id,note,recorded_by,created_at,running_balance,prev_hash,hash)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-    [id, cycleId, memberId, meetingId, type, amount, reversesId, note, actorId, createdAt, running, prevHash, hash],
+    `INSERT INTO postings (id,cycle_id,member_id,meeting_id,type,amount,reverses_id,note,recorded_by,created_at,running_balance,prev_hash,hash,loan_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+    [id, cycleId, memberId, meetingId, type, amount, reversesId, note, actorId, createdAt, running, prevHash, hash, loanId],
   );
   // Discreet SMS: amounts and references only, no names or notes. Sent in the member's chosen language.
   const lang = (await client.query('SELECT language FROM members WHERE id=$1', [memberId])).rows[0]?.language || 'en';

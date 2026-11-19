@@ -51,7 +51,7 @@ r.patch('/:id', requireRole('chairperson', 'secretary'), wrap(async (req, res) =
   if (status !== undefined && !['active', 'exited'].includes(status)) throw httpError(400, 'Bad status');
   await tx(async (c) => {
     await c.query(
-      `UPDATE members SET role=COALESCE($2,role), status=COALESCE($3,status), language=COALESCE($5,language),
+      `UPDATE members SET role=COALESCE($2,role), status=COALESCE($3,status), exited_at = CASE WHEN $3 = 'exited' AND status <> 'exited' THEN now() WHEN $3 = 'active' THEN NULL ELSE exited_at END, language=COALESCE($5,language),
          pin_hash = CASE WHEN $6::text IS NOT NULL THEN $6 WHEN $4 THEN NULL ELSE pin_hash END,
          pin_failures = CASE WHEN $4 OR $6::text IS NOT NULL THEN 0 ELSE pin_failures END,
          portal_password_hash = CASE WHEN $4 THEN NULL ELSE portal_password_hash END,
